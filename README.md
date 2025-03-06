@@ -33,11 +33,20 @@ A Python application that exports all tags from your Remember The Milk account t
 2. **Configure the Application**
 
    - Edit `settings.ini` and add your API key and shared secret:
+
      ```ini
      [rtm]
      api_key = your_api_key
      shared_secret = your_shared_secret
      ```
+
+   - Optionally, configure the output directory and filename:
+     ```ini
+     [output]
+     directory = path/to/output/directory
+     filename = rtm_tags.txt
+     ```
+     The directory can be an absolute path (e.g., `D:\path\to\directory`) or a relative path (e.g., `output`).
 
 3. **Install Dependencies**
    - Run `install.bat` to set up the virtual environment and dependencies
@@ -51,13 +60,14 @@ A Python application that exports all tags from your Remember The Milk account t
    - Log in to your Remember The Milk account if necessary
    - Authorize the application
    - Return to the command prompt and press Enter
-3. The application will export all tags to `output/rtm_tags.txt`
+3. The application will export all tags to the configured location (default: `output/rtm_tags.txt`)
 
 ## File Structure
 
 - `main.py`: Main application code
-- `settings.ini`: Configuration file for API credentials
-- `output/rtm_tags.txt`: Exported tags
+- `settings.ini`: Configuration file for API credentials and output settings
+- `settings_example.ini`: Example configuration file with comments
+- `output/rtm_tags.txt`: Default location for exported tags
 - `install.bat`: Installation script
 - `run.bat`: Execution script
 - `requirements.txt`: Lists dependencies including rtmilk from GitHub

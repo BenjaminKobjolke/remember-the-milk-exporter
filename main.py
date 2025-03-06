@@ -37,14 +37,17 @@ class RTMExporter:
         self.config = configparser.ConfigParser()
         self.config.read(config_path)
         
-        # Ensure output directory exists
-        self.output_dir = Path("output")
-        self.output_dir.mkdir(exist_ok=True)
-        
         # Get API credentials
         self.api_key = self.config.get("rtm", "api_key", fallback="")
         self.shared_secret = self.config.get("rtm", "shared_secret", fallback="")
         self.token = self.config.get("rtm", "token", fallback="")
+        
+        # Get output settings
+        output_dir_str = self.config.get("output", "directory", fallback="output")
+        self.output_filename = self.config.get("output", "filename", fallback="rtm_tags.txt")
+        
+        # Handle both absolute and relative paths
+        self.output_dir = Path(output_dir_str)
         
         if not self.api_key or not self.shared_secret:
             logger.error("API key and shared secret must be set in settings.ini")
@@ -89,9 +92,14 @@ class RTMExporter:
                 logger.warning("No tags found in the account.")
                 return
             
+            # Ensure output directory exists
+            self.output_dir.mkdir(exist_ok=True, parents=True)
+            
             # Format tags and write to file
-            output_file = self.output_dir / "rtm_tags.txt"
+            output_file = self.output_dir / self.output_filename
             tag_count = 0
+            
+            logger.info(f"Exporting tags to {output_file}...")
             
             with open(output_file, "w", encoding="utf-8") as f:
                 for tag_obj in tag_response.tags.tag:
