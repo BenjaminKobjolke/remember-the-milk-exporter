@@ -1,0 +1,9 @@
+# Install rtmilk directly from GitHub
+git+https://github.com/rkhwaja/rtmilk.git
+
+# Dependencies for the rtmilk library
+# These are included in rtmilk's setup.py, but listed here for reference
+pydantic>=2.0.0
+requests>=2.0.0
+aiohttp>=3.8.0
+listdiff>=0.1.0
