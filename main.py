@@ -45,6 +45,7 @@ class RTMExporter:
         # Get output settings
         output_dir_str = self.config.get("output", "directory", fallback="output")
         self.output_filename = self.config.get("output", "filename", fallback="rtm_tags.txt")
+        self.output_filename_lists = self.config.get("output", "filename_lists", fallback="rtm_lists.txt")
         
         # Handle both absolute and relative paths
         self.output_dir = Path(output_dir_str)
@@ -116,6 +117,45 @@ class RTMExporter:
             logger.error(f"Unexpected error: {e}")
             sys.exit(1)
 
+    def export_lists(self):
+        """Export all lists to a text file."""
+        try:
+            # Create API client
+            api = API(self.api_key, self.shared_secret, self.token)
+
+            # Get all lists
+            logger.info("Retrieving lists from Remember The Milk...")
+            list_response = api.ListsGetList()
+
+            # Check if lists exist in the response
+            if not hasattr(list_response.lists.list, "__iter__"):
+                logger.warning("No lists found in the account.")
+                return
+
+            # Ensure output directory exists
+            self.output_dir.mkdir(exist_ok=True, parents=True)
+
+            # Format lists and write to file
+            output_file = self.output_dir / self.output_filename_lists
+            list_count = 0
+
+            logger.info(f"Exporting lists to {output_file}...")
+
+            with open(output_file, "w", encoding="utf-8") as f:
+                for list_obj in list_response.lists.list:
+                    list_name = list_obj.name
+                    f.write(f"{list_name}\n")
+                    list_count += 1
+
+            logger.info(f"Successfully exported {list_count} lists to {output_file}")
+
+        except APIError as e:
+            logger.error(f"API error: {e}")
+            sys.exit(1)
+        except Exception as e:
+            logger.error(f"Unexpected error: {e}")
+            sys.exit(1)
+
 
 def main():
     """Main entry point for the application."""
@@ -124,6 +164,7 @@ def main():
     exporter = RTMExporter()
     exporter.authenticate()
     exporter.export_tags()
+    exporter.export_lists()
     
     logger.info("Export completed successfully")
 
