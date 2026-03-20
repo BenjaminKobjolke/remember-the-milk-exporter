@@ -10,10 +10,12 @@ import os
 import sys
 import configparser
 import logging
+import time
+import webbrowser
 from pathlib import Path
 
 # Import rtmilk package (installed via pip from GitHub)
-from rtmilk.models import APIError
+from rtmilk.models import APIError, FailStat
 from rtmilk.api_sync import API
 from rtmilk.authorization import AuthorizationSession
 
@@ -60,12 +62,23 @@ class RTMExporter:
             logger.info("No authentication token found. Starting authentication flow...")
             try:
                 auth_session = AuthorizationSession(self.api_key, self.shared_secret, "read")
-                print(f"Please visit the following URL to authorize the application:")
+                print(f"Opening authorization URL in your browser...")
                 print(auth_session.url)
-                input("Press Enter after you have authorized the application...")
-                
-                self.token = auth_session.Done()
-                logger.info("Authentication successful. Token received.")
+                webbrowser.open(auth_session.url)
+
+                # Poll for authorization with retries
+                max_attempts = 12
+                for attempt in range(1, max_attempts + 1):
+                    time.sleep(5)
+                    try:
+                        self.token = auth_session.Done()
+                        logger.info("Authentication successful. Token received.")
+                        break
+                    except APIError:
+                        logger.info(f"Waiting for authorization... (attempt {attempt}/{max_attempts})")
+                else:
+                    logger.error("Authorization timed out. Please try again.")
+                    sys.exit(1)
                 
                 # Save the token to the config file
                 self.config.set("rtm", "token", self.token)
@@ -78,6 +91,15 @@ class RTMExporter:
         else:
             logger.info("Using existing authentication token.")
 
+    def _clear_token(self):
+        """Clear stored token and re-authenticate."""
+        logger.warning("Auth token is invalid. Clearing token and re-authenticating...")
+        self.token = ""
+        self.config.set("rtm", "token", "")
+        with open(self.config_path, "w") as config_file:
+            self.config.write(config_file)
+        self.authenticate()
+
     def export_tags(self):
         """Export all tags to a text file."""
         try:
@@ -87,7 +109,20 @@ class RTMExporter:
             # Get all tags
             logger.info("Retrieving tags from Remember The Milk...")
             tag_response = api.TagsGetList()
-            
+
+            # Check for invalid auth token and retry once after re-authentication
+            if isinstance(tag_response, FailStat):
+                if tag_response.err.code == 98:
+                    self._clear_token()
+                    api = API(self.api_key, self.shared_secret, self.token)
+                    tag_response = api.TagsGetList()
+                    if isinstance(tag_response, FailStat):
+                        logger.error(f"API error after re-authentication (code {tag_response.err.code}): {tag_response.err.msg}")
+                        sys.exit(1)
+                else:
+                    logger.error(f"API error (code {tag_response.err.code}): {tag_response.err.msg}")
+                    sys.exit(1)
+
             # Check if tags exist in the response
             if not hasattr(tag_response.tags.tag, "__iter__"):
                 logger.warning("No tags found in the account.")
@@ -126,6 +161,19 @@ class RTMExporter:
             # Get all lists
             logger.info("Retrieving lists from Remember The Milk...")
             list_response = api.ListsGetList()
+
+            # Check for invalid auth token and retry once after re-authentication
+            if isinstance(list_response, FailStat):
+                if list_response.err.code == 98:
+                    self._clear_token()
+                    api = API(self.api_key, self.shared_secret, self.token)
+                    list_response = api.ListsGetList()
+                    if isinstance(list_response, FailStat):
+                        logger.error(f"API error after re-authentication (code {list_response.err.code}): {list_response.err.msg}")
+                        sys.exit(1)
+                else:
+                    logger.error(f"API error (code {list_response.err.code}): {list_response.err.msg}")
+                    sys.exit(1)
 
             # Check if lists exist in the response
             if not hasattr(list_response.lists.list, "__iter__"):
