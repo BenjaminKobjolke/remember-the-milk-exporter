@@ -208,12 +208,18 @@ class RTMExporter:
 def main():
     """Main entry point for the application."""
     logger.info("Starting Remember The Milk Tag Exporter")
-    
+
     exporter = RTMExporter()
+
+    if "--auth-only" in sys.argv:
+        exporter.token = ""
+        exporter.authenticate()
+        return
+
     exporter.authenticate()
     exporter.export_tags()
     exporter.export_lists()
-    
+
     logger.info("Export completed successfully")
 
 
