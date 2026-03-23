@@ -1,5 +1,5 @@
 # Python virtual environment
-venv/
+.venv/
 __pycache__/
 *.py[cod]
 *$py.class
@@ -29,3 +29,9 @@ output/rtm_tags.txt
 Thumbs.db
 output
 settings.ini
+
+# Temporary files
+tmp/
+
+# Claude Code
+.claude/
