@@ -6,18 +6,16 @@ This script connects to the Remember The Milk API and exports all tags
 to a text file, with each tag on a new line prefixed with #.
 """
 
-import os
-import sys
 import configparser
 import logging
+import sys
 import time
 import webbrowser
 from pathlib import Path
 
-# Import rtmilk package (installed via pip from GitHub)
-from rtmilk.models import APIError, FailStat
 from rtmilk.api_sync import API
 from rtmilk.authorization import AuthorizationSession
+from rtmilk.models import APIError, FailStat
 
 # Configure logging
 logging.basicConfig(
@@ -33,36 +31,36 @@ logger = logging.getLogger("rtm_exporter")
 class RTMExporter:
     """Class to handle exporting data from Remember The Milk."""
 
-    def __init__(self, config_path="settings.ini"):
+    def __init__(self, config_path: str = "settings.ini") -> None:
         """Initialize the exporter with the given configuration file."""
         self.config_path = config_path
         self.config = configparser.ConfigParser()
         self.config.read(config_path)
-        
+
         # Get API credentials
         self.api_key = self.config.get("rtm", "api_key", fallback="")
         self.shared_secret = self.config.get("rtm", "shared_secret", fallback="")
         self.token = self.config.get("rtm", "token", fallback="")
-        
+
         # Get output settings
         output_dir_str = self.config.get("output", "directory", fallback="output")
         self.output_filename = self.config.get("output", "filename", fallback="rtm_tags.txt")
         self.output_filename_lists = self.config.get("output", "filename_lists", fallback="rtm_lists.txt")
-        
+
         # Handle both absolute and relative paths
         self.output_dir = Path(output_dir_str)
-        
+
         if not self.api_key or not self.shared_secret:
             logger.error("API key and shared secret must be set in settings.ini")
             sys.exit(1)
 
-    def authenticate(self):
+    def authenticate(self) -> None:
         """Authenticate with the Remember The Milk API."""
         if not self.token:
             logger.info("No authentication token found. Starting authentication flow...")
             try:
                 auth_session = AuthorizationSession(self.api_key, self.shared_secret, "read")
-                print(f"Opening authorization URL in your browser...")
+                print("Opening authorization URL in your browser...")
                 print(auth_session.url)
                 webbrowser.open(auth_session.url)
 
@@ -79,7 +77,7 @@ class RTMExporter:
                 else:
                     logger.error("Authorization timed out. Please try again.")
                     sys.exit(1)
-                
+
                 # Save the token to the config file
                 self.config.set("rtm", "token", self.token)
                 with open(self.config_path, "w") as config_file:
@@ -91,7 +89,7 @@ class RTMExporter:
         else:
             logger.info("Using existing authentication token.")
 
-    def _clear_token(self):
+    def _clear_token(self) -> None:
         """Clear stored token and re-authenticate."""
         logger.warning("Auth token is invalid. Clearing token and re-authenticating...")
         self.token = ""
@@ -100,12 +98,12 @@ class RTMExporter:
             self.config.write(config_file)
         self.authenticate()
 
-    def export_tags(self):
+    def export_tags(self) -> None:
         """Export all tags to a text file."""
         try:
             # Create API client
             api = API(self.api_key, self.shared_secret, self.token)
-            
+
             # Get all tags
             logger.info("Retrieving tags from Remember The Milk...")
             tag_response = api.TagsGetList()
@@ -117,7 +115,9 @@ class RTMExporter:
                     api = API(self.api_key, self.shared_secret, self.token)
                     tag_response = api.TagsGetList()
                     if isinstance(tag_response, FailStat):
-                        logger.error(f"API error after re-authentication (code {tag_response.err.code}): {tag_response.err.msg}")
+                        logger.error(
+                            f"API error after re-authentication (code {tag_response.err.code}): {tag_response.err.msg}"
+                        )
                         sys.exit(1)
                 else:
                     logger.error(f"API error (code {tag_response.err.code}): {tag_response.err.msg}")
@@ -127,24 +127,24 @@ class RTMExporter:
             if not hasattr(tag_response.tags.tag, "__iter__"):
                 logger.warning("No tags found in the account.")
                 return
-            
+
             # Ensure output directory exists
             self.output_dir.mkdir(exist_ok=True, parents=True)
-            
+
             # Format tags and write to file
             output_file = self.output_dir / self.output_filename
             tag_count = 0
-            
+
             logger.info(f"Exporting tags to {output_file}...")
-            
+
             with open(output_file, "w", encoding="utf-8") as f:
                 for tag_obj in tag_response.tags.tag:
                     tag_name = tag_obj.name
                     f.write(f"#{tag_name}\n")
                     tag_count += 1
-            
+
             logger.info(f"Successfully exported {tag_count} tags to {output_file}")
-            
+
         except APIError as e:
             logger.error(f"API error: {e}")
             sys.exit(1)
@@ -152,7 +152,7 @@ class RTMExporter:
             logger.error(f"Unexpected error: {e}")
             sys.exit(1)
 
-    def export_lists(self):
+    def export_lists(self) -> None:
         """Export all lists to a text file."""
         try:
             # Create API client
@@ -169,7 +169,11 @@ class RTMExporter:
                     api = API(self.api_key, self.shared_secret, self.token)
                     list_response = api.ListsGetList()
                     if isinstance(list_response, FailStat):
-                        logger.error(f"API error after re-authentication (code {list_response.err.code}): {list_response.err.msg}")
+                        logger.error(
+                            "API error after re-authentication (code %s): %s",
+                            list_response.err.code,
+                            list_response.err.msg,
+                        )
                         sys.exit(1)
                 else:
                     logger.error(f"API error (code {list_response.err.code}): {list_response.err.msg}")
@@ -205,7 +209,7 @@ class RTMExporter:
             sys.exit(1)
 
 
-def main():
+def main() -> None:
     """Main entry point for the application."""
     logger.info("Starting Remember The Milk Tag Exporter")
 
